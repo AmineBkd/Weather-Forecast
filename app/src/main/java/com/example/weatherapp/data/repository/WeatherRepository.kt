@@ -8,11 +8,12 @@ import com.example.weatherapp.data.model.ForecastResponse
 import com.example.weatherapp.data.model.GeocodingResponseItem
 import com.example.weatherapp.data.model.WeatherResponse
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class WeatherRepository(
+import javax.inject.Inject
+
+class WeatherRepository @Inject constructor(
     private val api: OpenWeatherApi,
     private val dao: CityDao
 ) {

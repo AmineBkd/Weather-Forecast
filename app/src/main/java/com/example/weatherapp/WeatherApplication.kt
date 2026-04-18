@@ -1,12 +1,7 @@
 package com.example.weatherapp
 
 import android.app.Application
-import com.example.weatherapp.di.AppContainer
+import dagger.hilt.android.HiltAndroidApp
 
-class WeatherApplication : Application() {
-    lateinit var container: AppContainer
-    override fun onCreate() {
-        super.onCreate()
-        container = AppContainer(this)
-    }
-}
+@HiltAndroidApp
+class WeatherApplication : Application()

@@ -8,7 +8,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -20,6 +19,10 @@ import com.example.weatherapp.ui.home.HomeScreen
 import com.example.weatherapp.ui.home.HomeViewModel
 import com.example.weatherapp.ui.theme.WeatherAppTheme
 
+import dagger.hilt.android.AndroidEntryPoint
+import androidx.hilt.navigation.compose.hiltViewModel
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,10 +48,7 @@ fun WeatherAppNavGraph(modifier: Modifier = Modifier) {
         modifier = modifier
     ) {
         composable("home") {
-            val appContainer = (androidx.compose.ui.platform.LocalContext.current.applicationContext as WeatherApplication).container
-            val homeViewModel: HomeViewModel = viewModel(
-                factory = HomeViewModel.provideFactory(appContainer.weatherRepository)
-            )
+            val homeViewModel: HomeViewModel = hiltViewModel()
             HomeScreen(
                 viewModel = homeViewModel,
                 onNavigateToDetail = { lat, lon, name ->
@@ -68,10 +68,7 @@ fun WeatherAppNavGraph(modifier: Modifier = Modifier) {
             val lon = backStackEntry.arguments?.getFloat("lon")?.toDouble() ?: 0.0
             val name = backStackEntry.arguments?.getString("name") ?: ""
             
-            val appContainer = (androidx.compose.ui.platform.LocalContext.current.applicationContext as WeatherApplication).container
-            val detailViewModel: DetailViewModel = viewModel(
-                factory = DetailViewModel.provideFactory(appContainer.weatherRepository)
-            )
+            val detailViewModel: DetailViewModel = hiltViewModel()
             
             DetailScreen(
                 cityName = name,

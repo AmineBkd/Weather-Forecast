@@ -1,6 +1,5 @@
 package com.example.weatherapp.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +53,7 @@ fun WeatherAppTheme(
     if (!view.isInEditMode) {
         androidx.compose.runtime.SideEffect {
             val window = (view.context as android.app.Activity).window
+            @Suppress("DEPRECATION")
             window.statusBarColor = colorScheme.primaryContainer.toArgb()
             val windowInsetsController = androidx.core.view.WindowCompat.getInsetsController(window, view)
             windowInsetsController.isAppearanceLightStatusBars = !darkTheme

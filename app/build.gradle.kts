@@ -3,8 +3,10 @@ import java.io.FileInputStream
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 val localProperties = Properties()
@@ -16,9 +18,7 @@ val apiKey = localProperties.getProperty("WEATHER_API_KEY") ?: ""
 
 android {
     namespace = "com.example.weatherapp"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.weatherapp"
@@ -44,6 +44,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    kotlinOptions {
+        jvmTarget = "11"
+    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -68,6 +71,12 @@ dependencies {
     ksp(libs.room.compiler)
     implementation(libs.navigation.compose)
     implementation(libs.lifecycle.viewmodel.compose)
+    
+    // Hilt Integration
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.android.compiler)
+    implementation(libs.hilt.navigation.compose)
+    
     implementation(libs.play.services.location)
     implementation(libs.coil.compose)
     implementation(libs.kotlinx.coroutines.android)

@@ -281,7 +281,7 @@ fun SearchDialog(
                         ) {
                             Text(text = locationName, style = MaterialTheme.typography.bodyLarge)
                         }
-                        Divider()
+                        HorizontalDivider()
                     }
                 }
             }
