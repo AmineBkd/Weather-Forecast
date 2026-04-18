@@ -12,13 +12,11 @@
 - **Detail screen** — tap any city card to view a full weather breakdown
 
 ---
-
-## Tech Stack
-
 | Layer | Technology |
 |---|---|
-| **UI** | Jetpack Compose, Material 3 |
-| **Architecture** | MVVM, Repository pattern |
+| **UI** | Jetpack Compose, Material 3 (Dynamic Color) |
+| **Architecture** | Clean Architecture — Presentation / Domain / Data |
+| **Pattern** | MVVM + Repository + Use Cases |
 | **DI** | Dagger Hilt |
 | **Networking** | Retrofit + Moshi |
 | **Local DB** | Room |
@@ -54,20 +52,29 @@
 ---
 
 ## Architecture Overview
-
 ```
 app/
-├── data/
-│   ├── api/          # Retrofit services (weather + geocoding)
-│   ├── db/           # Room database, DAOs, entities
-│   ├── model/        # API response models
-│   └── repository/   # Single source of truth (network + cache)
-├── di/               # Hilt modules
-├── ui/
-│   ├── home/         # City list screen (ViewModel + Composables)
-│   ├── detail/       # City detail screen
-│   └── theme/        # Material 3 color scheme & typography
-└── util/             # Location helper utilities
+├── domain/                         ← Pure Kotlin. No Android or framework deps.
+│   ├── model/                      City, Weather, Forecast, ForecastItem, CitySearchResult
+│   ├── repository/                 WeatherRepositoryContract  (interface)
+│   └── usecase/                    AddCityUseCase, RemoveCityUseCase, GetCurrentWeatherUseCase,
+│                                   GetForecastUseCase, SearchCityUseCase,
+│                                   GetSavedCitiesUseCase, UpdateCurrentLocationUseCase,
+│                                   EnsureDefaultCitiesUseCase
+│
+├── data/                           ← Implements domain contracts
+│   ├── api/                        Retrofit service (OpenWeatherMap)
+│   ├── db/                         Room database, DAO, CityEntity
+│   ├── model/                      Raw API DTOs (Moshi)
+│   ├── mapper/                     DTO / Entity → Domain model mappers
+│   └── repository/                 WeatherRepositoryImpl
+│
+├── ui/                             ← Presentation layer
+│   ├── home/                       HomeScreen, HomeViewModel, HomeUiState
+│   ├── detail/                     DetailScreen, DetailViewModel, DetailUiState
+│   └── theme/                      Material 3 color scheme & typography
+│
+└── di/                             NetworkModule, DatabaseModule, RepositoryModule
 ```
 
 The **Repository** layer serves as the single source of truth: it first attempts a network fetch and falls back to the Room cache if the network is unavailable.
