@@ -30,20 +30,32 @@ class HomeViewModel(private val repository: WeatherRepository) : ViewModel() {
         }
     }
 
-    fun fetchWeatherDataForCities(cities: List<CityEntity>) {
+    fun fetchWeatherDataForCities(cities: List<CityEntity>, forceRefresh: Boolean = false) {
         if (cities.isEmpty()) return
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            if (forceRefresh || uiState.value.weatherData.isEmpty()) {
+                _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            }
             try {
-                val newWeatherData = mutableMapOf<Int, WeatherResponse>()
+                val currentData = _uiState.value.weatherData.toMutableMap()
+                var dataChanged = false
+                
                 for (city in cities) {
-                    val response = repository.getCurrentWeather(lat = city.lat, lon = city.lon)
-                    newWeatherData[city.id] = response
+                    if (forceRefresh || !currentData.containsKey(city.id)) {
+                        val response = repository.getCurrentWeather(lat = city.lat, lon = city.lon)
+                        currentData[city.id] = response
+                        dataChanged = true
+                    }
                 }
-                _uiState.value = _uiState.value.copy(
-                    weatherData = newWeatherData,
-                    isLoading = false
-                )
+                
+                if (dataChanged || forceRefresh) {
+                    _uiState.value = _uiState.value.copy(
+                        weatherData = currentData,
+                        isLoading = false
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,

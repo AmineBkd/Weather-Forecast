@@ -45,9 +45,9 @@ fun HomeScreen(
     
     val pullToRefreshState = rememberPullToRefreshState()
 
-    // Fetch data initially if list is populated
+    // Fetch data whenever savedCities changes (the ViewModel will only fetch missing ones unless forced)
     LaunchedEffect(savedCities) {
-        if (savedCities.isNotEmpty() && uiState.weatherData.isEmpty()) {
+        if (savedCities.isNotEmpty()) {
             viewModel.fetchWeatherDataForCities(savedCities)
         }
     }
@@ -103,7 +103,7 @@ fun HomeScreen(
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = uiState.isLoading,
-            onRefresh = { viewModel.fetchWeatherDataForCities(savedCities) },
+            onRefresh = { viewModel.fetchWeatherDataForCities(savedCities, forceRefresh = true) },
             state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
