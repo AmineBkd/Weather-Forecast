@@ -22,7 +22,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-
     @Provides
     @Singleton
     fun provideMoshi(): Moshi = Moshi.Builder()
@@ -40,40 +39,4 @@ object NetworkModule {
     @Singleton
     fun provideOpenWeatherApi(retrofit: Retrofit): OpenWeatherApi =
         retrofit.create(OpenWeatherApi::class.java)
-}
-
-@Module
-@InstallIn(SingletonComponent::class)
-object DatabaseModule {
-
-    @Provides
-    @Singleton
-    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(
-            context.applicationContext,
-            AppDatabase::class.java,
-            "weather_app_database"
-        )
-        .fallbackToDestructiveMigration()
-        .build()
-
-    @Provides
-    @Singleton
-    fun provideCityDao(database: AppDatabase): CityDao = database.cityDao()
-}
-
-/**
- * Binds the concrete [WeatherRepositoryImpl] to the domain-layer interface
- * [WeatherRepository]. This is the key Dependency Inversion step —
- * the domain layer depends only on the interface, never on the implementation.
- */
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class RepositoryModule {
-
-    @Binds
-    @Singleton
-    abstract fun bindWeatherRepository(
-        impl: WeatherRepositoryImpl
-    ): WeatherRepository
 }
