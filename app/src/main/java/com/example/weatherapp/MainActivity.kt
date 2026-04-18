@@ -18,7 +18,6 @@ import com.example.weatherapp.ui.detail.DetailViewModel
 import com.example.weatherapp.ui.home.HomeScreen
 import com.example.weatherapp.ui.home.HomeViewModel
 import com.example.weatherapp.ui.theme.WeatherAppTheme
-
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.hilt.navigation.compose.hiltViewModel
 

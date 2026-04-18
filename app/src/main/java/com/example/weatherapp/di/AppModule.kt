@@ -5,9 +5,11 @@ import androidx.room.Room
 import com.example.weatherapp.data.api.OpenWeatherApi
 import com.example.weatherapp.data.db.AppDatabase
 import com.example.weatherapp.data.db.CityDao
-import com.example.weatherapp.data.repository.WeatherRepository
+import com.example.weatherapp.data.repository.WeatherRepositoryImpl
+import com.example.weatherapp.domain.repository.WeatherRepository
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,55 +21,59 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
+object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideMoshi(): Moshi {
-        return Moshi.Builder()
-            .add(KotlinJsonAdapterFactory())
-            .build()
-    }
+    fun provideMoshi(): Moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
 
     @Provides
     @Singleton
-    fun provideRetrofit(moshi: Moshi): Retrofit {
-        return Retrofit.Builder()
-            .baseUrl("https://api.openweathermap.org/")
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-    }
+    fun provideRetrofit(moshi: Moshi): Retrofit = Retrofit.Builder()
+        .baseUrl("https://api.openweathermap.org/")
+        .addConverterFactory(MoshiConverterFactory.create(moshi))
+        .build()
 
     @Provides
     @Singleton
-    fun provideOpenWeatherApi(retrofit: Retrofit): OpenWeatherApi {
-        return retrofit.create(OpenWeatherApi::class.java)
-    }
+    fun provideOpenWeatherApi(retrofit: Retrofit): OpenWeatherApi =
+        retrofit.create(OpenWeatherApi::class.java)
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
-        return Room.databaseBuilder(
+    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
+        Room.databaseBuilder(
             context.applicationContext,
             AppDatabase::class.java,
             "weather_app_database"
         )
         .fallbackToDestructiveMigration()
         .build()
-    }
 
     @Provides
     @Singleton
-    fun provideCityDao(database: AppDatabase): CityDao {
-        return database.cityDao()
-    }
+    fun provideCityDao(database: AppDatabase): CityDao = database.cityDao()
+}
 
-    @Provides
+/**
+ * Binds the concrete [WeatherRepositoryImpl] to the domain-layer interface
+ * [WeatherRepository]. This is the key Dependency Inversion step —
+ * the domain layer depends only on the interface, never on the implementation.
+ */
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryModule {
+
+    @Binds
     @Singleton
-    fun provideWeatherRepository(
-        api: OpenWeatherApi,
-        dao: CityDao
-    ): WeatherRepository {
-        return WeatherRepository(api, dao)
-    }
+    abstract fun bindWeatherRepository(
+        impl: WeatherRepositoryImpl
+    ): WeatherRepository
 }

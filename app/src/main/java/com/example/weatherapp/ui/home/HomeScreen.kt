@@ -34,7 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.weatherapp.data.db.CityEntity
+import com.example.weatherapp.domain.model.City
+import com.example.weatherapp.domain.model.CitySearchResult
+import com.example.weatherapp.domain.model.Weather
 import com.example.weatherapp.util.LocationHelper
 import kotlinx.coroutines.launch
 
@@ -59,10 +61,9 @@ fun HomeScreen(
         if (searchQuery.isBlank()) savedCities
         else savedCities.filter { it.name.contains(searchQuery, ignoreCase = true) }
     }
-    
+
     val pullToRefreshState = rememberPullToRefreshState()
 
-    // Fetch data whenever savedCities changes (the ViewModel will only fetch missing ones unless forced)
     LaunchedEffect(savedCities) {
         if (savedCities.isNotEmpty()) {
             viewModel.fetchWeatherDataForCities(savedCities)
@@ -70,11 +71,13 @@ fun HomeScreen(
     }
 
     val locationHelper = remember { LocationHelper(context) }
-    
+
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true || permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
             scope.launch {
                 val location = locationHelper.getCurrentLocation()
                 if (location != null) {
@@ -213,8 +216,8 @@ fun HomeScreen(
 
 @Composable
 fun CityWeatherCard(
-    city: CityEntity,
-    weather: com.example.weatherapp.data.model.WeatherResponse?,
+    city: City,
+    weather: Weather?,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -251,25 +254,21 @@ fun CityWeatherCard(
                     }
                 }
                 if (weather != null) {
-                    val desc = weather.weather.firstOrNull()?.main ?: "Unknown"
-                    Text(text = desc, style = MaterialTheme.typography.bodyMedium)
+                    Text(text = weather.conditionMain, style = MaterialTheme.typography.bodyMedium)
                 }
             }
 
             if (weather != null) {
-                val iconIcon = weather.weather.firstOrNull()?.icon
-                if (iconIcon != null) {
+                if (weather.iconCode.isNotEmpty()) {
                     AsyncImage(
-                        model = "https://openweathermap.org/img/wn/$iconIcon@2x.png",
+                        model = "https://openweathermap.org/img/wn/${weather.iconCode}@2x.png",
                         contentDescription = "Weather Icon",
                         modifier = Modifier.size(64.dp)
                     )
                 }
-
                 Spacer(modifier = Modifier.width(16.dp))
-                
                 Text(
-                    text = "${weather.main.temp.toInt()}°C",
+                    text = "${weather.tempCelsius.toInt()}°C",
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -295,7 +294,7 @@ fun AddCityDialog(
     onCitySelected: (Double, Double, String) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<com.example.weatherapp.data.model.GeocodingResponseItem>>(emptyList()) }
+    var results by remember { mutableStateOf<List<CitySearchResult>>(emptyList()) }
     val scope = rememberCoroutineScope()
     var isSearching by remember { mutableStateOf(false) }
 
@@ -319,7 +318,7 @@ fun AddCityDialog(
                             try {
                                 results = viewModel.searchCity(query)
                             } catch (e: Exception) {
-                                // handle error natively
+                                // handle error
                             } finally {
                                 isSearching = false
                             }
@@ -367,9 +366,7 @@ fun AddCityDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
+            TextButton(onClick = onDismiss) { Text("Close") }
         }
     )
 }

@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.weatherapp.domain.model.ForecastItem
+import com.example.weatherapp.domain.model.Weather
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -66,12 +68,8 @@ fun DetailScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        item {
-                            CurrentWeatherHeader(current = current)
-                        }
-                        item {
-                            WeatherDetailsGrid(current = current)
-                        }
+                        item { CurrentWeatherHeader(weather = current) }
+                        item { WeatherDetailsGrid(weather = current) }
                         item {
                             Text(
                                 "5-Day Forecast",
@@ -80,13 +78,12 @@ fun DetailScreen(
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                         }
-                        
-                        // Group forecast by day to show one item per day or leave as a 3-hour list
-                        // The prompt asks for 5 day weather forecast. We can just show the list.
-                        val dailyForecasts = forecast.list.filter { it.dtTxt.contains("12:00:00") }.takeIf { it.isNotEmpty() } ?: forecast.list.take(5)
+                        val dailyForecasts = forecast.items
+                            .filter { it.dateText.contains("12:00:00") }
+                            .takeIf { it.isNotEmpty() } ?: forecast.items.take(5)
 
-                        items(dailyForecasts) { f ->
-                            ForecastItemRow(forecastItem = f)
+                        items(dailyForecasts) { item ->
+                            ForecastItemRow(forecastItem = item)
                         }
                     }
                 }
@@ -96,26 +93,25 @@ fun DetailScreen(
 }
 
 @Composable
-fun CurrentWeatherHeader(current: com.example.weatherapp.data.model.WeatherResponse) {
+fun CurrentWeatherHeader(weather: Weather) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        val iconItem = current.weather.firstOrNull()?.icon
-        if (iconItem != null) {
+        if (weather.iconCode.isNotEmpty()) {
             AsyncImage(
-                model = "https://openweathermap.org/img/wn/$iconItem@4x.png",
+                model = "https://openweathermap.org/img/wn/${weather.iconCode}@4x.png",
                 contentDescription = "Weather Icon",
                 modifier = Modifier.size(120.dp)
             )
         }
         Text(
-            text = "${current.main.temp.toInt()}°C",
+            text = "${weather.tempCelsius.toInt()}°C",
             style = MaterialTheme.typography.displayLarge,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = current.weather.firstOrNull()?.description?.replaceFirstChar { it.uppercase() } ?: "",
+            text = weather.conditionDescription.replaceFirstChar { it.uppercase() },
             style = MaterialTheme.typography.titleMedium,
             color = Color.Gray
         )
@@ -123,7 +119,7 @@ fun CurrentWeatherHeader(current: com.example.weatherapp.data.model.WeatherRespo
 }
 
 @Composable
-fun WeatherDetailsGrid(current: com.example.weatherapp.data.model.WeatherResponse) {
+fun WeatherDetailsGrid(weather: Weather) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -133,9 +129,9 @@ fun WeatherDetailsGrid(current: com.example.weatherapp.data.model.WeatherRespons
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            DetailItem("Humidity", "${current.main.humidity}%")
-            DetailItem("Wind", "${current.wind.speed} m/s")
-            DetailItem("Pressure", "${current.main.pressure} hPa")
+            DetailItem("Humidity", "${weather.humidity}%")
+            DetailItem("Wind", "${weather.windSpeed} m/s")
+            DetailItem("Pressure", "${weather.pressure} hPa")
         }
     }
 }
@@ -150,7 +146,7 @@ fun DetailItem(label: String, value: String) {
 }
 
 @Composable
-fun ForecastItemRow(forecastItem: com.example.weatherapp.data.model.ForecastDto) {
+fun ForecastItemRow(forecastItem: ForecastItem) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
@@ -160,26 +156,25 @@ fun ForecastItemRow(forecastItem: com.example.weatherapp.data.model.ForecastDto)
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            val date = Date(forecastItem.dt * 1000)
+            val date = Date(forecastItem.timestampEpoch * 1000)
             val formatDay = SimpleDateFormat("EEEE, d MMM", Locale.getDefault())
-            
+
             Text(
                 text = formatDay.format(date),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )
-            
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "${forecastItem.main.temp.toInt()}°C",
+                    text = "${forecastItem.tempCelsius.toInt()}°C",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                val iconIcon = forecastItem.weather.firstOrNull()?.icon
-                if (iconIcon != null) {
+                if (forecastItem.iconCode.isNotEmpty()) {
                     AsyncImage(
-                        model = "https://openweathermap.org/img/wn/$iconIcon@2x.png",
+                        model = "https://openweathermap.org/img/wn/${forecastItem.iconCode}@2x.png",
                         contentDescription = "Weather Icon",
                         modifier = Modifier.size(48.dp)
                     )

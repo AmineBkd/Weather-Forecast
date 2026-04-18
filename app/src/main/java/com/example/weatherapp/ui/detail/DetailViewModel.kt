@@ -2,18 +2,22 @@ package com.example.weatherapp.ui.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.weatherapp.data.repository.WeatherRepository
+import com.example.weatherapp.domain.usecase.GetCurrentWeatherUseCase
+import com.example.weatherapp.domain.usecase.GetForecastUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
-
 @HiltViewModel
-class DetailViewModel @Inject constructor(private val repository: WeatherRepository) : ViewModel() {
+class DetailViewModel @Inject constructor(
+    private val getCurrentWeather: GetCurrentWeatherUseCase,
+    private val getForecast: GetForecastUseCase
+) : ViewModel() {
+
     private val _uiState = MutableStateFlow(DetailUiState())
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
@@ -21,15 +25,12 @@ class DetailViewModel @Inject constructor(private val repository: WeatherReposit
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val currentDeferred = async { repository.getCurrentWeather(lat, lon) }
-                val forecastDeferred = async { repository.getFiveDayForecast(lat, lon) }
-                
-                val current = currentDeferred.await()
-                val forecast = forecastDeferred.await()
-                
+                val weatherDeferred = async { getCurrentWeather(lat, lon) }
+                val forecastDeferred = async { getForecast(lat, lon) }
+
                 _uiState.value = _uiState.value.copy(
-                    currentWeather = current,
-                    forecast = forecast,
+                    currentWeather = weatherDeferred.await(),
+                    forecast = forecastDeferred.await(),
                     isLoading = false
                 )
             } catch (e: Exception) {
