@@ -30,4 +30,12 @@ interface OpenWeatherApi {
         @Query("limit") limit: Int = 5,
         @Query("appid") apiKey: String
     ): List<GeocodingResponseItem>
+
+    @GET("geo/1.0/reverse")
+    suspend fun reverseGeocode(
+        @Query("lat") lat: Double,
+        @Query("lon") lon: Double,
+        @Query("limit") limit: Int = 1,
+        @Query("appid") apiKey: String
+    ): List<GeocodingResponseItem>
 }

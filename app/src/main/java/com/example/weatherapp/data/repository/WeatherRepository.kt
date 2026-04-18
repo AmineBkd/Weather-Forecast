@@ -34,11 +34,18 @@ class WeatherRepository(
     }
 
     suspend fun updateCurrentLocationCity(lat: Double, lon: Double) {
+        val reverseGeocodeResults = try {
+            api.reverseGeocode(lat = lat, lon = lon, apiKey = apiKey)
+        } catch (e: Exception) {
+            emptyList()
+        }
+        val cityName = reverseGeocodeResults.firstOrNull()?.name ?: "Current Location"
+        
         withContext(Dispatchers.IO) {
             dao.deleteCurrentLocationCity()
             dao.insertCity(
                 CityEntity(
-                    name = "Current Location",
+                    name = cityName,
                     lat = lat,
                     lon = lon,
                     isCurrentLocation = true

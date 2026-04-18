@@ -52,6 +52,15 @@ class WeatherRepositoryTest {
             return listOf(GeocodingResponseItem("Fake City", 0.0, 0.0, "AA"))
         }
 
+        override suspend fun reverseGeocode(
+            lat: Double,
+            lon: Double,
+            limit: Int,
+            apiKey: String
+        ): List<GeocodingResponseItem> {
+            return listOf(GeocodingResponseItem("Fake City Location", lat, lon, "AA"))
+        }
+
     }
 
     private val fakeDao = object : CityDao {
