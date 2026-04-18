@@ -4,14 +4,19 @@ import android.Manifest
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
@@ -21,11 +26,13 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.weatherapp.data.db.CityEntity
 import com.example.weatherapp.util.LocationHelper
@@ -41,7 +48,17 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    var showSearchDialog by remember { mutableStateOf(false) }
+    var showAddCityDialog by remember { mutableStateOf(false) }
+    var showSearchBar by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    // Filtered list for the in-list search feature
+    val filteredCities = remember(savedCities, searchQuery) {
+        if (searchQuery.isBlank()) savedCities
+        else savedCities.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
     
     val pullToRefreshState = rememberPullToRefreshState()
 
@@ -73,31 +90,70 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Weather Forecast", fontWeight = FontWeight.Bold) },
-                actions = {
-                    IconButton(onClick = {
-                        locationPermissionLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
+            Column {
+                TopAppBar(
+                    title = { Text("Weather Forecast", fontWeight = FontWeight.Bold) },
+                    actions = {
+                        IconButton(onClick = {
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
                             )
-                        )
-                    }) {
-                        Icon(Icons.Default.LocationOn, contentDescription = "Current Location")
-                    }
-                    IconButton(onClick = { showSearchDialog = true }) {
-                        Icon(Icons.Default.Search, contentDescription = "Search City")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                        }) {
+                            Icon(Icons.Default.LocationOn, contentDescription = "Current Location")
+                        }
+                        // Search within saved cities list
+                        IconButton(onClick = {
+                            showSearchBar = !showSearchBar
+                            if (!showSearchBar) searchQuery = ""
+                        }) {
+                            Icon(
+                                imageVector = if (showSearchBar) Icons.Default.Clear else Icons.Default.Search,
+                                contentDescription = if (showSearchBar) "Close Search" else "Search Cities"
+                            )
+                        }
+                        // Add a new city
+                        IconButton(onClick = { showAddCityDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = "Add City")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showSearchDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add City")
+                // Inline search bar for filtering saved cities
+                AnimatedVisibility(
+                    visible = showSearchBar,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    LaunchedEffect(showSearchBar) {
+                        if (showSearchBar) focusRequester.requestFocus()
+                    }
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Search saved cities…") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .focusRequester(focusRequester),
+                        shape = RoundedCornerShape(50)
+                    )
+                }
             }
         }
     ) { padding ->
@@ -114,32 +170,42 @@ fun HomeScreen(
                     Text(text = "Error: ${uiState.error}", color = MaterialTheme.colorScheme.error)
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(savedCities, key = { it.id }) { city ->
-                        val weather = uiState.weatherData[city.id]
-                        CityWeatherCard(
-                            city = city,
-                            weather = weather,
-                            onClick = { onNavigateToDetail(city.lat, city.lon, city.name) },
-                            onDelete = { viewModel.removeCity(city) }
+                if (filteredCities.isEmpty() && savedCities.isNotEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "No cities match \"$searchQuery\"",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(filteredCities, key = { it.id }) { city ->
+                            val weather = uiState.weatherData[city.id]
+                            CityWeatherCard(
+                                city = city,
+                                weather = weather,
+                                onClick = { onNavigateToDetail(city.lat, city.lon, city.name) },
+                                onDelete = { viewModel.removeCity(city) }
+                            )
+                        }
                     }
                 }
             }
         }
     }
 
-    if (showSearchDialog) {
-        SearchDialog(
+    if (showAddCityDialog) {
+        AddCityDialog(
             viewModel = viewModel,
-            onDismiss = { showSearchDialog = false },
+            onDismiss = { showAddCityDialog = false },
             onCitySelected = { lat, lon, name ->
                 viewModel.addCity(name, lat, lon)
-                showSearchDialog = false
+                showAddCityDialog = false
             }
         )
     }
@@ -223,7 +289,7 @@ fun CityWeatherCard(
 }
 
 @Composable
-fun SearchDialog(
+fun AddCityDialog(
     viewModel: HomeViewModel,
     onDismiss: () -> Unit,
     onCitySelected: (Double, Double, String) -> Unit
@@ -235,13 +301,14 @@ fun SearchDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Search City") },
+        title = { Text("Add City") },
         text = {
             Column {
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
                     label = { Text("City Name") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -260,15 +327,21 @@ fun SearchDialog(
                     },
                     modifier = Modifier.align(Alignment.End)
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text("Search")
                 }
-                
+
                 if (isSearching) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
                     items(results) { item ->
                         val locationName = "${item.name}, ${item.state ?: ""} ${item.country}"
@@ -279,6 +352,13 @@ fun SearchDialog(
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(text = locationName, style = MaterialTheme.typography.bodyLarge)
                         }
                         HorizontalDivider()
